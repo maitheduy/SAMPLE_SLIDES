@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full-Screen Slideshow with Audio</title>
+    <style>
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Slide Container */
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #000;
+        }
+
+        /* Individual Slides */
+        .slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+            position: relative;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        /* Images - Full screen with cover */
+        .slide img {
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Audio Button - Top Left */
+        .audio-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+            user-select: none;
+        }
+
+        .audio-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: scale(1.1);
+        }
+
+        .audio-btn.playing {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Audio iframe - Hidden but functional */
+        .audio-iframe {
+            display: none;
+        }
+
+        /* Navigation Buttons */
+        .nav-btn {
+            position: fixed;
+            bottom: 30px;
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        #prev {
+            left: 30px;
+        }
+
+        #next {
+            right: 30px;
+        }
+
+        /* Slide Counter */
+        .slide-counter {
+            position: fixed;
+            bottom: 38px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 13px;
+            font-family: Arial, sans-serif;
+            letter-spacing: 2px;
+            z-index: 998;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Loading State */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            z-index: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .audio-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+                top: 15px;
+                left: 15px;
+            }
+
+            .nav-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 14px;
+                bottom: 20px;
+            }
+
+            #prev {
+                left: 20px;
+            }
+
+            #next {
+                right: 20px;
+            }
+
+            .slide-counter {
+                bottom: 28px;
+                font-size: 11px;
+                padding: 3px 12px;
+            }
+        }
+
+        /* Animation for slide transition */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .slide.active img {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container" id="slideContainer">
+        <!-- Loading indicator -->
+        <div class="loading" id="loading">Loading...</div>
+
+        <!-- SLIDE 1 -->
+        <div class="slide active" data-index="0">
+            <img src="https://picsum.photos/1920/1080?random=1" alt="Slide 1">
+            <button class="audio-btn" data-audio="https://vocaroo.com/embed/1abao8xh4wmM" data-playing="false">
+                ▶️
+            </button>
+        </div>
+
+        <!-- SLIDE 2 -->
+        <div class="slide" data-index="1">
+            <img src="https://picsum.photos/1920/1080?random=2" alt="Slide 2">
+            <button class="audio-btn" data-audio="https://vocaroo.com/embed/1e36FlYB5o2C" data-playing="false">
+                ▶️
+            </button>
+        </div>
+
+        <!-- SLIDE 3 -->
+        <div class="slide" data-index="2">
+            <img src="https://picsum.photos/1920/1080?random=3" alt="Slide 3">
+            <button class="audio-btn" data-audio="https://vocaroo.com/embed/1kScMxgR2sb3" data-playing="false">
+                ▶️
+            </button>
+        </div>
+
+        <!-- SLIDE 4 -->
+        <div class="slide" data-index="3">
+            <img src="https://picsum.photos/1920/1080?random=4" alt="Slide 4">
+            <button class="audio-btn" data-audio="https://vocaroo.com/embed/1jS8olpuJ6bp" data-playing="false">
+                ▶️
+            </button>
+        </div>
+
+        <!-- Hidden iframes for audio -->
+        <div id="audioContainer" style="display: none;"></div>
+
+        <!-- Navigation Controls -->
+        <button class="nav-btn" id="prev" aria-label="Previous slide">◀</button>
+        <button class="nav-btn" id="next" aria-label="Next slide">▶</button>
+        
+        <!-- Slide Counter -->
+        <div class="slide-counter" id="counter">1 / 4</div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // DOM Elements
+            const slides = document.querySelectorAll('.slide');
+            const prevBtn = document.getElementById('prev');
+            const nextBtn = document.getElementById('next');
+            const counter = document.getElementById('counter');
+            const audioContainer = document.getElementById('audioContainer');
+            const loading = document.getElementById('loading');
+            
+            let currentSlide = 0;
+            const totalSlides = slides.length;
+            let audioPlayers = {};
+            let currentAudioId = null;
+
+            // --- Initialize Audio Players ---
+            function initAudioPlayers() {
+                const audioButtons = document.querySelectorAll('.audio-btn');
+                
+                audioButtons.forEach((btn, index) => {
+                    const audioUrl = btn.dataset.audio;
+                    const iframeId = `audio-iframe-${index}`;
+                    
+                    // Create hidden iframe
+                    const iframe = document.createElement('iframe');
+                    iframe.id = iframeId;
+                    iframe.src = audioUrl;
+                    iframe.width = '0';
+                    iframe.height = '0';
+                    iframe.style.display = 'none';
+                    iframe.allow = 'autoplay';
+                    
+                    // Store reference
+                    audioPlayers[iframeId] = {
+                        iframe: iframe,
+                        button: btn,
+                        isPlaying: false,
+                        audioUrl: audioUrl
+                    };
+                    
+                    audioContainer.appendChild(iframe);
+                    
+                    // Load iframe content
+                    iframe.onload = function() {
+                        // Try to access iframe content for audio control
+                        try {
+                            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                            const audio = iframeDoc.querySelector('audio');
+                            if (audio) {
+                                audioPlayers[iframeId].audioElement = audio;
+                            }
+                        } catch (e) {
+                            // Cross-origin restrictions - fallback to reload method
+                            console.log('Cannot access iframe content directly, using reload method');
+                        }
+                    };
+                    
+                    // Click handler for audio button
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        toggleAudio(iframeId);
+                    });
+                });
+            }
+
+            // --- Toggle Audio Play/Pause ---
+            function toggleAudio(iframeId) {
+                const player = audioPlayers[iframeId];
+                if (!player) return;
+                
+                // Get current slide's button
+                const currentSlideBtn = document.querySelector(`.slide.active .audio-btn`);
+                const currentIframeId = currentSlideBtn ? getIframeIdFromButton(currentSlideBtn) : null;
+                
+                // If clicking on different slide's audio, stop all others first
+                if (currentIframeId && currentIframeId !== iframeId) {
+                    stopAllAudio();
+                }
+                
+                // Toggle this audio
+                if (player.isPlaying) {
+                    pauseAudio(iframeId);
+                } else {
+                    playAudio(iframeId);
+                }
+            }
+
+            function playAudio(iframeId) {
+                const player = audioPlayers[iframeId];
+                if (!player) return;
+                
+                try {
+                    // Method 1: Try to control via iframe content
+                    const iframe = player.iframe;
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    const audio = iframeDoc.querySelector('audio');
+                    
+                    if (audio) {
+                        audio.play();
+                        player.isPlaying = true;
+                        updateButtonState(iframeId, true);
+                        return;
+                    }
+                } catch (e) {
+                    // Cross-origin issue, use alternative method
+                }
+                
+                // Method 2: Reload iframe with autoplay parameter
+                const currentSrc = player.iframe.src;
+                if (currentSrc.includes('?autoplay=1')) {
+                    // Already has autoplay, just reload
+                    player.iframe.src = currentSrc;
+                } else {
+                    // Add autoplay parameter
+                    const separator = currentSrc.includes('?') ? '&' : '?';
+                    player.iframe.src = currentSrc + separator + 'autoplay=1';
+                }
+                
+                player.isPlaying = true;
+                updateButtonState(iframeId, true);
+                
+                // Store current audio ID
+                currentAudioId = iframeId;
+            }
+
+            function pauseAudio(iframeId) {
+                const player = audioPlayers[iframeId];
+                if (!player) return;
+                
+                try {
+                    // Try to pause via iframe content
+                    const iframe = player.iframe;
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    const audio = iframeDoc.querySelector('audio');
+                    
+                    if (audio) {
+                        audio.pause();
+                        player.isPlaying = false;
+                        updateButtonState(iframeId, false);
+                        return;
+                    }
+                } catch (e) {
+                    // Cross-origin issue
+                }
+                
+                // Reload without autoplay to stop audio
+                const currentSrc = player.iframe.src;
+                const cleanSrc = currentSrc.replace(/[?&]autoplay=1/, '');
+                player.iframe.src = cleanSrc;
+                
+                player.isPlaying = false;
+                updateButtonState(iframeId, false);
+            }
+
+            function stopAllAudio() {
+                Object.keys(audioPlayers).forEach(id => {
+                    if (audioPlayers[id].isPlaying) {
+                        pauseAudio(id);
+                    }
+                });
+                currentAudioId = null;
+            }
+
+            function updateButtonState(iframeId, isPlaying) {
+                const player = audioPlayers[iframeId];
+                if (!player) return;
+                
+                const btn = player.button;
+                if (isPlaying) {
+                    btn.textContent = '⏸️';
+                    btn.classList.add('playing');
+                    btn.dataset.playing = 'true';
+                } else {
+                    btn.textContent = '▶️';
+                    btn.classList.remove('playing');
+                    btn.dataset.playing = 'false';
+                }
+            }
+
+            function getIframeIdFromButton(btn) {
+                const audioBtns = document.querySelectorAll('.audio-btn');
+                for (let i = 0; i < audioBtns.length; i++) {
+                    if (audioBtns[i] === btn) {
+                        return `audio-iframe-${i}`;
+                    }
+                }
+                return null;
+            }
+
+            // --- Slide Navigation ---
+            function goToSlide(index) {
+                if (index < 0) index = 0;
+                if (index >= totalSlides) index = totalSlides - 1;
+                
+                // Stop all audio when changing slides
+                stopAllAudio();
+                
+                // Update slides
+                slides.forEach(s => s.classList.remove('active'));
+                slides[index].classList.add('active');
+                
+                // Update counter
+                counter.textContent = `${index + 1} / ${totalSlides}`;
+                
+                // Update current slide index
+                currentSlide = index;
+                
+                // Update button states
+                updateNavButtons();
+                
+                // Auto-play audio for new slide (optional)
+                // const newSlideBtn = slides[index].querySelector('.audio-btn');
+                // if (newSlideBtn) {
+                //     const iframeId = getIframeIdFromButton(newSlideBtn);
+                //     if (iframeId) {
+                //         setTimeout(() => playAudio(iframeId), 500);
+                //     }
+                // }
+            }
+
+            function nextSlide() {
+                const next = (currentSlide + 1) % totalSlides;
+                goToSlide(next);
+            }
+
+            function prevSlide() {
+                const prev = (currentSlide - 1 + totalSlides) % totalSlides;
+                goToSlide(prev);
+            }
+
+            function updateNavButtons() {
+                prevBtn.classList.toggle('disabled', currentSlide === 0);
+                nextBtn.classList.toggle('disabled', currentSlide === totalSlides - 1);
+            }
+
+            // --- Event Listeners ---
+            prevBtn.addEventListener('click', prevSlide);
+            nextBtn.addEventListener('click', nextSlide);
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    nextSlide();
+                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    prevSlide();
+                } else if (e.key === ' ' || e.key === 'Space') {
+                    // Space to toggle audio on current slide
+                    e.preventDefault();
+                    const currentBtn = document.querySelector('.slide.active .audio-btn');
+                    if (currentBtn) {
+                        const iframeId = getIframeIdFromButton(currentBtn);
+                        if (iframeId) {
+                            toggleAudio(iframeId);
+                        }
+                    }
+                }
+            });
+
+            // --- Image Loading ---
+            function handleImageLoad() {
+                let loadedImages = 0;
+                const allImages = document.querySelectorAll('.slide img');
+                
+                allImages.forEach(img => {
+                    if (img.complete) {
+                        loadedImages++;
+                    } else {
+                        img.addEventListener('load', () => {
+                            loadedImages++;
+                            if (loadedImages === allImages.length) {
+                                loading.style.display = 'none';
+                            }
+                        });
+                    }
+                });
+                
+                // Fallback if images don't trigger load
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 3000);
+            }
+
+            // --- Initialize ---
+            function init() {
+                // Initialize audio players
+                initAudioPlayers();
+                
+                // Set initial slide
+                goToSlide(0);
+                
+                // Handle image loading
+                handleImageLoad();
+                
+                // Remove loading indicator after some time
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 2000);
+            }
+
+            // Start the application
+            init();
+
+            // --- Cleanup on page unload (optional) ---
+            window.addEventListener('beforeunload', function() {
+                stopAllAudio();
+            });
+
+        })();
+    </script>
+</body>
+</html>
